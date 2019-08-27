@@ -1,6 +1,7 @@
 from app import app, db
 from flask import request, jsonify
 from app.models import Event
+from app.email import sendEmail
 
 
 # set index route to return nothing, just so no error occurs
@@ -11,29 +12,33 @@ def index():
 
 @app.route('/api/save', methods=['POST'])
 def save():
-    try:
-        # get headers first
-        # NOTE: nothing to do with html headers
-        title = request.headers.get('title')
-        day = request.headers.get('day')
-        month = request.headers.get('month')
-        year = request.headers.get('year')
-        notes = request.headers.get('notes')
+    # get headers first
+    # NOTE: nothing to do with html headers
+    title = request.headers.get('title')
+    day = request.headers.get('day')
+    month = request.headers.get('month')
+    year = request.headers.get('year')
+    notes = request.headers.get('notes')
+    email = request.headers.get('email')
 
-        # if any info is missing, give back an error jsonified message
-        if not day or not title or not month or not year or not notes:
-            return jsonify({ 'error' : 'Invalid parameters' })
+    # if any info is missing, give back an error jsonified message
+    if not day or not title or not month or not year or not notes:
+        return jsonify({ 'error' : 'Invalid parameters' })
 
-        # all info is included, save the event
-        event = Event(title=title, day=day, month=month, year=year, notes=notes)
+    # all info is included, save the event
+    event = Event(title=title, day=day, month=month, year=year, notes=notes)
 
-        # add to db
-        db.session.add(event)
-        db.session.commit()
+    # add to db
+    db.session.add(event)
+    db.session.commit()
 
-        return jsonify({ 'success' : 'Saved Event' })
-    except:
-        return jsonify({ 'error' : 'Error #002: Could not save event' })
+
+    sendEmail(title, day, month, year, notes, email)
+
+
+    return jsonify({ 'success' : 'Saved Event' })
+
+    return jsonify({ 'error' : 'Error #002: Could not save event' })
 
 @app.route('/api/retrieve', methods=['GET'])
 def retrieve():
@@ -82,7 +87,7 @@ def retrieve():
         })
     except:
         return jsonify({ 'error': 'Error #007: Something went wrong' })
-        
+
 
 @app.route('/api/delete', methods=['DELETE'])
 def delete():
